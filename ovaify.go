@@ -10,20 +10,35 @@ import (
 
 // OvaConfig provides a configuration for creating a .ova file.
 type OvaConfig struct {
-	// OvfFilePath is the path to the original .ovf file.
+	// OvfFilePath is the OVF file to include in the OVA.
 	OvfFilePath string
 
-	// FilePathsToInclude are the paths to the files to included in the .ova.
+	// FilePathsToInclude are the paths to the files to included
+	// in the OVA.
 	FilePathsToInclude []string
 
-	// OutputFilePath is the file path where the .ova should be saved.
+	// OutputFileMode specifies the mode for the resulting
+	// OVA file. If it is not specified, then the OVF's mode
+	// is used.
+	OutputFileMode os.FileMode
+
+	// OutputFilePath is the file path where the OVA will be saved.
 	OutputFilePath string
 }
 
 // Validate returns a non-nil error if the configuration is invalid.
 func (o *OvaConfig) Validate() error {
 	if len(o.OvfFilePath) == 0 {
-		return errors.New("Please specify a .ovf file path")
+		return errors.New("Please specify an OVF file")
+	}
+
+	ovfInfo, err := os.Stat(o.OvfFilePath)
+	if err != nil {
+		return err
+	}
+
+	if o.OutputFileMode == 0 {
+		o.OutputFileMode = ovfInfo.Mode()
 	}
 
 	if len(o.FilePathsToInclude) == 0 {
@@ -37,23 +52,17 @@ func (o *OvaConfig) Validate() error {
 	return nil
 }
 
-// ConvertOvfToOva converts the specified .ovf and its associated files into
-// a single .ova.
+// CreateOvaFile creates an OVA file using the specified OvaConfig.
 //
 // Based on work by Daniel "thebsdbox" Finneran:
 // https://github.com/thebsdbox/gova
-func ConvertOvfToOva(config OvaConfig) error {
+func CreateOvaFile(config OvaConfig) error {
 	err := config.Validate()
 	if err != nil {
 		return err
 	}
 
-	ovfInfo, err := os.Stat(config.OvfFilePath)
-	if err != nil {
-		return err
-	}
-
-	ova, err := os.OpenFile(config.OutputFilePath, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, ovfInfo.Mode())
+	ova, err := os.OpenFile(config.OutputFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, config.OutputFileMode)
 	if err != nil {
 		return err
 	}
@@ -61,13 +70,13 @@ func ConvertOvfToOva(config OvaConfig) error {
 
 	tarw := tar.NewWriter(ova)
 
-	err = CopyFileToOva(config.OvfFilePath, tarw)
+	err = CopyFileIntoOva(config.OvfFilePath, tarw)
 	if err != nil {
 		return err
 	}
 
 	for _, filePath := range config.FilePathsToInclude {
-		err = CopyFileToOva(filePath, tarw)
+		err = CopyFileIntoOva(filePath, tarw)
 		if err != nil {
 			return err
 		}
@@ -76,11 +85,11 @@ func ConvertOvfToOva(config OvaConfig) error {
 	return nil
 }
 
-// CopyFileToOva copies the specified file into a .ova.
+// CopyFileIntoOva copies the specified file into a .ova.
 //
 // Based on work by Daniel "thebsdbox" Finneran:
 // https://github.com/thebsdbox/gova
-func CopyFileToOva(filePath string, ova *tar.Writer) error {
+func CopyFileIntoOva(filePath string, ova *tar.Writer) error {
 	info, err := os.Stat(filePath)
 	if err != nil {
 		return err
@@ -110,4 +119,3 @@ func CopyFileToOva(filePath string, ova *tar.Writer) error {
 
 	return nil
 }
-

@@ -1,3 +1,3 @@
-// Package ovaify provides functionality for converting .ovf appliances
-// to a single .ova file.
+// Package ovaify provides functionality for creating Open Virtual
+// Appliances (OVAs).
 package ovaify
