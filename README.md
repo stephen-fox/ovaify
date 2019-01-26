@@ -37,10 +37,10 @@ import (
 
 func main() {
     config := ovaify.OvaConfig{
+        OutputFilePath:     "/my-awesome.ova",
         OvfFilePath:        "/my-vm.ovf",
-		FilePathsToInclude: []string{
+        FilePathsToInclude: []string{
             "/my-vm-disk-image.vmdk",
-            "/my-awesome.ova",
         },
     }
 
